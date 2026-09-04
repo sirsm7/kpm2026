@@ -3,22 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aplikasi PPDAG</title>
-    
-    <!-- Favicon -->
+    <title>Karnival Pendidikan Madani</title>
     <link rel="icon" type="image/png" href="icoppdag.png">
-    
-    <!-- Tailwind CSS (CDN) -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #f0f0f0;
+        }
+        #app-container {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: sans-serif;
+            color: #555;
+            z-index: 1;
+        }
+    </style>
 </head>
-<body class="m-0 p-0 w-full h-screen overflow-hidden bg-gray-50">
-    
-    <!-- Pembalut GAS Web App -->
+<body>
+    <div id="loading">Memuatkan aplikasi...</div>
     <iframe 
+        id="app-container" 
         src="https://script.google.com/a/macros/moe-dl.edu.my/s/AKfycbwzYniVaJABM81MLOCSWciQwK5nMK3sU1RUcYFHuaZNwO1DgI2SnPgmJv85mcT_JYUH/exec" 
-        class="w-full h-full border-0 block"
+        title="Sistem KPM 2026"
+        onload="document.getElementById('loading').style.display='none';"
+        allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" 
         allowfullscreen>
     </iframe>
 
+    <script>
+        const SUPABASE_CONFIG = {
+            url: "https://app.tech4ag.my",
+            key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzYzMzczNjQ1LCJleHAiOjIwNzg3MzM2NDV9.vZOedqJzUn01PjwfaQp7VvRzSm4aRMr21QblPDK8AoY"
+        };
+        
+        window.getSupabaseConfig = function() {
+            return SUPABASE_CONFIG;
+        };
+    </script>
 </body>
 </html>
