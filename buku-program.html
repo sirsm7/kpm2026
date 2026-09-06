@@ -1,8 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="ms">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Kemas kini meta viewport untuk menghalang native zoom -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Buku Program - Karnival Pendidikan Madani</title>
     <link rel="icon" type="image/png" href="icoppdag.png">
     
@@ -39,7 +41,7 @@
         }
     </style>
 </head>
-<body class="min-h-screen flex flex-col font-sans text-gray-800">
+<body class="min-h-screen flex flex-col font-sans text-gray-800 overscroll-none">
 
     <!-- Pengepala Navigasi -->
     <header class="bg-white/90 backdrop-blur-md shadow-sm fixed top-0 w-full z-50">
@@ -76,10 +78,10 @@
     </header>
 
     <!-- Kontena Utama Flipbook -->
-    <main class="flex-grow pt-24 pb-28 px-4 overflow-auto w-full text-center">
+    <main id="main-container" class="flex-grow pt-24 pb-28 px-4 overflow-auto w-full text-center touch-pan-x touch-pan-y">
         
         <!-- Pembalut Zoom - Membenarkan skala ke atas/bawah -->
-        <div id="zoom-wrapper" class="inline-block transition-transform duration-300 origin-top">
+        <div id="zoom-wrapper" class="inline-block transition-transform duration-75 origin-top">
             
             <div id="flip-book" class="flip-book drop-shadow-2xl text-left mx-auto">
                 
@@ -152,7 +154,7 @@
         </div>
     </footer>
 
-    <!-- Logik Inisialisasi Flipbook & Zoom -->
+    <!-- Logik Inisialisasi Flipbook, Butang Zoom & Pinch Zoom -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             
@@ -171,7 +173,7 @@
                     maxHeight: 1130,
                     maxShadowOpacity: 0.5,
                     showCover: true, // Kulit hadapan dan belakang
-                    mobileScrollSupport: false, // Memudahkan "swipe" pada peranti mudah alih
+                    mobileScrollSupport: false, // Diset false untuk membenarkan touch gesture tersuai tanpa pertembungan
                     usePortrait: true // Membenarkan mod 1 muka surat di telefon
                 }
             );
@@ -210,16 +212,17 @@
             btnPrev.disabled = true;
 
             // ----------------------------------------------------
-            // 2. Konfigurasi Zoom
+            // 2. Konfigurasi Zoom (Butang & Pinch)
             // ----------------------------------------------------
+            const mainContainer = document.getElementById('main-container');
             const zoomWrapper = document.getElementById('zoom-wrapper');
             const btnZoomIn = document.getElementById('btn-zoom-in');
             const btnZoomOut = document.getElementById('btn-zoom-out');
             const zoomText = document.getElementById('zoom-text');
 
             let currentZoom = 1.0;
-            const ZOOM_STEP = 0.25; // Skala kenaikan
-            const MAX_ZOOM = 2.5;   // Had maksimum (250%)
+            const ZOOM_STEP = 0.25; // Skala kenaikan butang
+            const MAX_ZOOM = 3.0;   // Had maksimum (300%)
             const MIN_ZOOM = 0.5;   // Had minimum (50%)
 
             function updateZoomDisplay() {
@@ -229,9 +232,11 @@
                 zoomText.innerText = Math.round(currentZoom * 100) + '%';
             }
 
+            // Fungsi Butang
             btnZoomIn.addEventListener('click', () => {
                 if (currentZoom < MAX_ZOOM) {
                     currentZoom += ZOOM_STEP;
+                    if (currentZoom > MAX_ZOOM) currentZoom = MAX_ZOOM;
                     updateZoomDisplay();
                 }
             });
@@ -239,7 +244,59 @@
             btnZoomOut.addEventListener('click', () => {
                 if (currentZoom > MIN_ZOOM) {
                     currentZoom -= ZOOM_STEP;
+                    if (currentZoom < MIN_ZOOM) currentZoom = MIN_ZOOM;
                     updateZoomDisplay();
+                }
+            });
+
+            // ----------------------------------------------------
+            // 3. Logik Pinch-to-Zoom (Sentuhan Berbilang Jari)
+            // ----------------------------------------------------
+            let initialPinchDistance = null;
+            let initialZoomLevel = 1.0;
+
+            // Fungsi utiliti mengira jarak antara dua titik sentuhan (Teorem Pythagoras)
+            function getDistanceBetweenTouches(e) {
+                const touch1 = e.touches[0];
+                const touch2 = e.touches[1];
+                return Math.sqrt(
+                    Math.pow(touch2.clientX - touch1.clientX, 2) + 
+                    Math.pow(touch2.clientY - touch1.clientY, 2)
+                );
+            }
+
+            mainContainer.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 2) {
+                    // Mula cubit
+                    initialPinchDistance = getDistanceBetweenTouches(e);
+                    initialZoomLevel = currentZoom;
+                }
+            }, { passive: false });
+
+            mainContainer.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 2 && initialPinchDistance !== null) {
+                    // Halang tatal/zoom natif pelayar web (seperti leret ke belakang dsb)
+                    e.preventDefault(); 
+                    
+                    const currentDistance = getDistanceBetweenTouches(e);
+                    // Nisbah jarak sekarang bahagi jarak asal
+                    const scaleFactor = currentDistance / initialPinchDistance;
+                    
+                    let newZoom = initialZoomLevel * scaleFactor;
+                    
+                    // Hadkan saiz zoom
+                    if (newZoom < MIN_ZOOM) newZoom = MIN_ZOOM;
+                    if (newZoom > MAX_ZOOM) newZoom = MAX_ZOOM;
+                    
+                    currentZoom = newZoom;
+                    updateZoomDisplay();
+                }
+            }, { passive: false });
+
+            mainContainer.addEventListener('touchend', (e) => {
+                if (e.touches.length < 2) {
+                    // Tamatkan mod cubit
+                    initialPinchDistance = null;
                 }
             });
 
