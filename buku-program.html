@@ -42,26 +42,46 @@
 <body class="min-h-screen flex flex-col font-sans text-gray-800">
 
     <!-- Pengepala Navigasi -->
-    <header class="bg-white/80 backdrop-blur-md shadow-sm fixed top-0 w-full z-50">
-        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-            <a href="index.html" class="flex items-center text-blue-600 hover:text-blue-800 transition-colors font-medium">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+    <header class="bg-white/90 backdrop-blur-md shadow-sm fixed top-0 w-full z-50">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between relative">
+            
+            <a href="index.html" class="flex items-center text-blue-600 hover:text-blue-800 transition-colors font-medium z-10">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1 sm:mr-2" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
                 </svg>
-                Kembali ke Utama
+                <span class="hidden sm:inline">Kembali</span>
             </a>
-            <h1 class="text-lg font-bold text-gray-800 hidden sm:block">Buku Program KPM 2026</h1>
-            <div class="w-24"></div> <!-- Pengimbang ruang -->
+            
+            <!-- Tajuk di tengah -->
+            <h1 class="text-base sm:text-lg font-bold text-gray-800 absolute left-1/2 transform -translate-x-1/2 whitespace-nowrap hidden sm:block">
+                Buku Program KPM 2026
+            </h1>
+            
+            <!-- Kawalan Zoom -->
+            <div class="flex items-center space-x-1 sm:space-x-2 bg-gray-200/60 rounded-full p-1 shadow-inner z-10">
+                <button id="btn-zoom-out" class="p-1.5 sm:p-2 rounded-full bg-white text-gray-700 shadow hover:bg-gray-50 transition-colors" title="Kecilkan">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
+                    </svg>
+                </button>
+                <span id="zoom-text" class="text-xs sm:text-sm font-bold text-gray-700 w-10 sm:w-12 text-center">100%</span>
+                <button id="btn-zoom-in" class="p-1.5 sm:p-2 rounded-full bg-white text-gray-700 shadow hover:bg-gray-50 transition-colors" title="Besarkan">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
+                    </svg>
+                </button>
+            </div>
+            
         </div>
     </header>
 
     <!-- Kontena Utama Flipbook -->
-    <main class="flex-grow flex items-center justify-center pt-20 pb-24 px-4 overflow-hidden">
+    <main class="flex-grow pt-24 pb-28 px-4 overflow-auto w-full text-center">
         
-        <!-- Kontena saiz buku -->
-        <div class="relative w-full max-w-4xl flex justify-center">
+        <!-- Pembalut Zoom - Membenarkan skala ke atas/bawah -->
+        <div id="zoom-wrapper" class="inline-block transition-transform duration-300 origin-top">
             
-            <div id="flip-book" class="flip-book drop-shadow-2xl">
+            <div id="flip-book" class="flip-book drop-shadow-2xl text-left mx-auto">
                 
                 <!-- Muka Surat 1 (Kulit Hadapan) -->
                 <div class="page page-cover" data-density="hard">
@@ -104,6 +124,7 @@
                 </div>
                 
             </div>
+            
         </div>
 
     </main>
@@ -131,11 +152,13 @@
         </div>
     </footer>
 
-    <!-- Logik Inisialisasi Flipbook -->
+    <!-- Logik Inisialisasi Flipbook & Zoom -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             
-            // Konfigurasi Asas Flipbook
+            // ----------------------------------------------------
+            // 1. Konfigurasi Asas Flipbook
+            // ----------------------------------------------------
             const pageFlip = new St.PageFlip(
                 document.getElementById('flip-book'),
                 {
@@ -156,7 +179,7 @@
             // Muatkan elemen .page dari HTML
             pageFlip.loadFromHTML(document.querySelectorAll('.page'));
 
-            // Elemen DOM untuk kawalan
+            // Elemen DOM untuk kawalan muka surat
             const btnPrev = document.getElementById('btn-prev');
             const btnNext = document.getElementById('btn-next');
             const pageCurrent = document.getElementById('page-current');
@@ -165,7 +188,7 @@
             // Set jumlah muka surat
             pageTotal.innerText = pageFlip.getPageCount();
 
-            // Kawalan Butang
+            // Kawalan Butang Selak
             btnPrev.addEventListener('click', () => {
                 pageFlip.flipPrev();
             });
@@ -176,27 +199,50 @@
 
             // Acara (Event) apabila muka surat diselak
             pageFlip.on('flip', (e) => {
-                // e.data menyimpan indeks muka surat (bermula dari 0)
-                // Jika peranti dalam mod landskap (2 muka surat), ia merujuk pada muka kiri
                 let currentPage = e.data + 1;
                 pageCurrent.innerText = currentPage;
 
-                // Uruskan status "disabled" butang
-                if (currentPage === 1) {
-                    btnPrev.disabled = true;
-                } else {
-                    btnPrev.disabled = false;
-                }
-
-                if (currentPage >= pageFlip.getPageCount()) {
-                    btnNext.disabled = true;
-                } else {
-                    btnNext.disabled = false;
-                }
+                btnPrev.disabled = (currentPage === 1);
+                btnNext.disabled = (currentPage >= pageFlip.getPageCount());
             });
 
             // Set awal status butang Prev
             btnPrev.disabled = true;
+
+            // ----------------------------------------------------
+            // 2. Konfigurasi Zoom
+            // ----------------------------------------------------
+            const zoomWrapper = document.getElementById('zoom-wrapper');
+            const btnZoomIn = document.getElementById('btn-zoom-in');
+            const btnZoomOut = document.getElementById('btn-zoom-out');
+            const zoomText = document.getElementById('zoom-text');
+
+            let currentZoom = 1.0;
+            const ZOOM_STEP = 0.25; // Skala kenaikan
+            const MAX_ZOOM = 2.5;   // Had maksimum (250%)
+            const MIN_ZOOM = 0.5;   // Had minimum (50%)
+
+            function updateZoomDisplay() {
+                // Terapkan transformasi skala pada kontena
+                zoomWrapper.style.transform = `scale(${currentZoom})`;
+                // Kemas kini teks peratusan
+                zoomText.innerText = Math.round(currentZoom * 100) + '%';
+            }
+
+            btnZoomIn.addEventListener('click', () => {
+                if (currentZoom < MAX_ZOOM) {
+                    currentZoom += ZOOM_STEP;
+                    updateZoomDisplay();
+                }
+            });
+
+            btnZoomOut.addEventListener('click', () => {
+                if (currentZoom > MIN_ZOOM) {
+                    currentZoom -= ZOOM_STEP;
+                    updateZoomDisplay();
+                }
+            });
+
         });
     </script>
 </body>
