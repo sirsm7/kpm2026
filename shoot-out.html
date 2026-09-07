@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rumusan Pasukan Shoot-Out</title>
-    <base target="_top">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
       details > summary { list-style: none; cursor: pointer; }
@@ -35,7 +34,7 @@
         <!-- State: Memuatkan -->
         <div id="state-loading" class="flex flex-col items-center justify-center py-12">
           <div class="w-10 h-10 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin mb-4"></div>
-          <p class="text-sm text-slate-500 font-medium animate-pulse">Menghubungkan ke Pangkalan Data...</p>
+          <p class="text-sm text-slate-500 font-medium animate-pulse">Mengambil data pelayan...</p>
         </div>
 
         <!-- State: Ralat -->
@@ -169,22 +168,28 @@
     </div>
 
     <script>
+      const GAS_API_URL = 'https://script.google.com/macros/s/AKfycby4lxvvfATmbzsIAbUgTNoyTqElspEuxGuWZ6_WH-e3Vl63mYPnYkhtTR2RLGkgcfAu/exec';
       let currentData = null;
 
-      function loadSummaryData() {
+      async function loadSummaryData() {
         document.getElementById('state-loading').classList.remove('hidden');
         document.getElementById('state-error').classList.add('hidden');
         document.getElementById('state-content').classList.add('hidden');
         document.getElementById('state-content').classList.remove('flex');
 
-        if (typeof google !== 'undefined' && google.script && google.script.run) {
-          google.script.run
-            .withSuccessHandler(onDataSuccess)
-            .withFailureHandler(onDataFailure)
-            .getSummaryData();
-        } else {
-          // Fallback untuk ujian jika dibuka di luar GAS environment
-          onDataFailure(new Error("Persekitaran Google Apps Script tidak dikesan."));
+        try {
+          const response = await fetch(GAS_API_URL);
+          if (!response.ok) throw new Error(`Ralat HTTP: ${response.status}`);
+          
+          const result = await response.json();
+          
+          if (result.status === 'success') {
+            onDataSuccess(result.data);
+          } else {
+            throw new Error(result.message || "Ralat tidak diketahui dari pelayan.");
+          }
+        } catch (error) {
+          onDataFailure(error);
         }
       }
 
