@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rumusan Pasukan Shoot-Out</title>
+    <title>Sistem Pengurusan Pasukan & Markah</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
       details > summary { list-style: none; cursor: pointer; }
@@ -13,279 +13,458 @@
         0%    {opacity: 0; margin-top: -10px}
         100%  {opacity: 1; margin-top: 0px}
       }
+      .tab-active { border-bottom: 3px solid #3b82f6; color: #1e40af; font-weight: bold; }
+      .tab-inactive { color: #64748b; font-weight: medium; }
+      .hide-view { display: none; }
     </style>
   </head>
-  <body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex items-center justify-center p-4">
+  <body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex justify-center p-2 sm:p-4">
     
-    <div class="w-full max-w-md bg-white rounded-xl shadow-lg border border-slate-100 overflow-hidden">
-      <div class="p-5 border-b bg-slate-800 text-white flex justify-between items-center">
-        <div>
-          <h2 class="text-xl font-bold">Rumusan Pendaftaran</h2>
-          <p class="text-xs text-slate-300 mt-1">Dikemaskini secara langsung</p>
+    <div class="w-full max-w-lg bg-white rounded-xl shadow-lg border border-slate-100 overflow-hidden flex flex-col h-[calc(100vh-2rem)]">
+      
+      <!-- Kepala & Navigasi -->
+      <div class="bg-slate-800 text-white flex flex-col shrink-0">
+        <div class="p-4 flex justify-between items-center border-b border-slate-700">
+          <div>
+            <h1 class="text-xl font-bold">Sistem Pertandingan</h1>
+            <p class="text-xs text-slate-300 mt-1" id="status-koneksi">Tersambung ke Google Sheets</p>
+          </div>
+          <button onclick="refreshCurrentView()" class="p-2 rounded-full hover:bg-slate-700 transition-colors" title="Muat Semula">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
         </div>
-        <button onclick="loadSummaryData()" class="p-2 rounded-full hover:bg-slate-700 transition-colors" title="Semak Semula Data">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-        </button>
+        
+        <div class="flex bg-slate-100 text-sm overflow-x-auto no-scrollbar">
+          <button onclick="switchTab('rumusan')" id="tab-rumusan" class="flex-1 py-3 px-2 text-center tab-active transition-colors whitespace-nowrap">📝 Rumusan</button>
+          <button onclick="switchTab('borang')" id="tab-borang" class="flex-1 py-3 px-2 text-center tab-inactive transition-colors whitespace-nowrap">➕ Skor Baru</button>
+          <button onclick="switchTab('ranking')" id="tab-ranking" class="flex-1 py-3 px-2 text-center tab-inactive transition-colors whitespace-nowrap">🏆 Ranking</button>
+        </div>
       </div>
 
-      <div class="p-5">
-        <!-- State: Memuatkan -->
-        <div id="state-loading" class="flex flex-col items-center justify-center py-12">
-          <div class="w-10 h-10 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin mb-4"></div>
-          <p class="text-sm text-slate-500 font-medium animate-pulse">Mengambil data pelayan...</p>
+      <!-- Ruang Utama (Boleh Skrol) -->
+      <div class="p-4 flex-1 overflow-y-auto relative bg-slate-50/50">
+        
+        <!-- Pemuat (Loader) Umum -->
+        <div id="loader-utama" class="hide-view absolute inset-0 bg-white/80 z-10 flex flex-col items-center justify-center backdrop-blur-sm">
+          <div class="w-10 h-10 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin mb-3"></div>
+          <p class="text-sm font-medium text-slate-600" id="loader-teks">Memproses data...</p>
         </div>
 
-        <!-- State: Ralat -->
-        <div id="state-error" class="hidden bg-red-50 border-l-4 border-red-500 p-4 rounded-md mb-4">
-          <div class="flex">
-            <div class="flex-shrink-0">
-              <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-              </svg>
-            </div>
-            <div class="ml-3">
-              <h3 class="text-sm font-medium text-red-800">Ralat Rangkaian</h3>
-              <div class="mt-2 text-sm text-red-700">
-                <p id="error-message">Tidak dapat memuat turun data.</p>
-              </div>
-              <div class="mt-4">
-                <div class="-mx-2 -my-1.5 flex">
-                  <button type="button" onclick="loadSummaryData()" class="bg-red-50 px-2 py-1.5 rounded-md text-sm font-medium text-red-800 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-red-50 focus:ring-red-600 transition-colors">
-                    Cuba Semula
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <!-- NOTIFIKASI UMUM -->
+        <div id="notifikasi" class="hide-view mb-4 p-3 rounded-md text-sm border font-medium"></div>
 
-        <!-- State: Paparan -->
-        <div id="state-content" class="hidden flex-col gap-5">
-          
+        <!-- ======================= -->
+        <!-- VIEW 1: RUMUSAN (Sedia ada) -->
+        <!-- ======================= -->
+        <div id="view-rumusan" class="space-y-4">
           <!-- Kad Penalty -->
-          <div class="bg-white rounded-lg border border-slate-200 border-l-4 border-l-blue-500 overflow-hidden">
-            <div class="bg-slate-50 p-3 border-b border-slate-100 flex items-center justify-between">
-              <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                <span>⚽</span> Penalty Shoot-Out
-              </h3>
+          <div class="bg-white rounded-lg border border-slate-200 border-l-4 border-l-blue-500 overflow-hidden shadow-sm">
+            <div class="bg-slate-50 p-2.5 border-b border-slate-100">
+              <h3 class="text-sm font-bold text-slate-800 uppercase flex items-center gap-2"><span>⚽</span> Penalty Shoot-Out</h3>
             </div>
-            <div class="p-3 space-y-2 bg-white">
-              <details class="group border rounded-md border-slate-200 bg-slate-50 overflow-hidden">
-                <summary class="flex justify-between items-center text-sm p-3 bg-white group-hover:bg-slate-50 transition-colors">
-                  <div class="flex items-center gap-3">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400 group-open:rotate-90 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-                    <span class="text-slate-700 font-semibold">Sekolah Rendah</span>
-                  </div>
-                  <span id="val-pen-ren-count" class="font-bold text-lg text-blue-600">0</span>
+            <div class="p-2.5 space-y-2 bg-white">
+              <details class="group border rounded bg-slate-50">
+                <summary class="flex justify-between items-center text-sm p-2.5 bg-white group-hover:bg-slate-50">
+                  <span class="font-semibold text-slate-700">Sekolah Rendah</span>
+                  <span id="val-pen-ren-count" class="font-bold text-blue-600">0</span>
                 </summary>
-                <div class="px-4 py-3 text-xs text-slate-600 border-t border-slate-100 bg-slate-50 max-h-48 overflow-y-auto">
-                  <ul id="list-pen-rendah" class="list-disc pl-4 space-y-1.5 marker:text-blue-400"></ul>
-                </div>
+                <div class="px-3 py-2 text-xs border-t bg-slate-50"><ul id="list-pen-rendah" class="list-disc pl-4 space-y-1"></ul></div>
               </details>
-
-              <details class="group border rounded-md border-slate-200 bg-slate-50 overflow-hidden">
-                <summary class="flex justify-between items-center text-sm p-3 bg-white group-hover:bg-slate-50 transition-colors">
-                  <div class="flex items-center gap-3">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400 group-open:rotate-90 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-                    <span class="text-slate-700 font-semibold">Sekolah Menengah</span>
-                  </div>
-                  <span id="val-pen-men-count" class="font-bold text-lg text-blue-600">0</span>
+              <details class="group border rounded bg-slate-50">
+                <summary class="flex justify-between items-center text-sm p-2.5 bg-white group-hover:bg-slate-50">
+                  <span class="font-semibold text-slate-700">Sekolah Menengah</span>
+                  <span id="val-pen-men-count" class="font-bold text-blue-600">0</span>
                 </summary>
-                <div class="px-4 py-3 text-xs text-slate-600 border-t border-slate-100 bg-slate-50 max-h-48 overflow-y-auto">
-                  <ul id="list-pen-menengah" class="list-disc pl-4 space-y-1.5 marker:text-blue-400"></ul>
-                </div>
+                <div class="px-3 py-2 text-xs border-t bg-slate-50"><ul id="list-pen-menengah" class="list-disc pl-4 space-y-1"></ul></div>
               </details>
             </div>
           </div>
 
           <!-- Kad Netball -->
-          <div class="bg-white rounded-lg border border-slate-200 border-l-4 border-l-pink-500 overflow-hidden">
-            <div class="bg-slate-50 p-3 border-b border-slate-100 flex items-center justify-between">
-              <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                <span>🏐</span> Netball Shoot-Out
-              </h3>
+          <div class="bg-white rounded-lg border border-slate-200 border-l-4 border-l-pink-500 overflow-hidden shadow-sm">
+            <div class="bg-slate-50 p-2.5 border-b border-slate-100">
+              <h3 class="text-sm font-bold text-slate-800 uppercase flex items-center gap-2"><span>🏐</span> Netball Shoot-Out</h3>
             </div>
-            <div class="p-3 space-y-2 bg-white">
-              <details class="group border rounded-md border-slate-200 bg-slate-50 overflow-hidden">
-                <summary class="flex justify-between items-center text-sm p-3 bg-white group-hover:bg-slate-50 transition-colors">
-                  <div class="flex items-center gap-3">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400 group-open:rotate-90 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-                    <span class="text-slate-700 font-semibold">Sekolah Rendah</span>
-                  </div>
-                  <span id="val-net-ren-count" class="font-bold text-lg text-pink-600">0</span>
+            <div class="p-2.5 space-y-2 bg-white">
+              <details class="group border rounded bg-slate-50">
+                <summary class="flex justify-between items-center text-sm p-2.5 bg-white group-hover:bg-slate-50">
+                  <span class="font-semibold text-slate-700">Sekolah Rendah</span>
+                  <span id="val-net-ren-count" class="font-bold text-pink-600">0</span>
                 </summary>
-                <div class="px-4 py-3 text-xs text-slate-600 border-t border-slate-100 bg-slate-50 max-h-48 overflow-y-auto">
-                  <ul id="list-net-rendah" class="list-disc pl-4 space-y-1.5 marker:text-pink-400"></ul>
-                </div>
+                <div class="px-3 py-2 text-xs border-t bg-slate-50"><ul id="list-net-rendah" class="list-disc pl-4 space-y-1"></ul></div>
               </details>
-
-              <details class="group border rounded-md border-slate-200 bg-slate-50 overflow-hidden">
-                <summary class="flex justify-between items-center text-sm p-3 bg-white group-hover:bg-slate-50 transition-colors">
-                  <div class="flex items-center gap-3">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400 group-open:rotate-90 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-                    <span class="text-slate-700 font-semibold">Sekolah Menengah</span>
-                  </div>
-                  <span id="val-net-men-count" class="font-bold text-lg text-pink-600">0</span>
+              <details class="group border rounded bg-slate-50">
+                <summary class="flex justify-between items-center text-sm p-2.5 bg-white group-hover:bg-slate-50">
+                  <span class="font-semibold text-slate-700">Sekolah Menengah</span>
+                  <span id="val-net-men-count" class="font-bold text-pink-600">0</span>
                 </summary>
-                <div class="px-4 py-3 text-xs text-slate-600 border-t border-slate-100 bg-slate-50 max-h-48 overflow-y-auto">
-                  <ul id="list-net-menengah" class="list-disc pl-4 space-y-1.5 marker:text-pink-400"></ul>
-                </div>
+                <div class="px-3 py-2 text-xs border-t bg-slate-50"><ul id="list-net-menengah" class="list-disc pl-4 space-y-1"></ul></div>
               </details>
             </div>
           </div>
 
-          <!-- Info Keseluruhan -->
-          <div class="bg-slate-800 text-white p-4 rounded-lg shadow-sm mt-1">
-            <div class="flex justify-between items-center text-sm border-b border-slate-600 pb-2 mb-2">
-              <span class="text-slate-300 font-medium">Jumlah Institusi Unik Terlibat</span>
-              <span id="val-inst-total" class="font-bold text-white bg-slate-700 px-2 py-0.5 rounded">0</span>
+          <!-- Info & Eksport -->
+          <div class="bg-slate-800 text-white p-3 rounded-lg shadow-sm">
+            <div class="flex justify-between text-sm border-b border-slate-600 pb-2 mb-2">
+              <span class="text-slate-300">Institusi Terlibat</span>
+              <span id="val-inst-total" class="font-bold">0</span>
             </div>
             <div class="flex justify-between items-center">
-              <span class="text-sm font-semibold uppercase tracking-wide text-slate-200">Jumlah Pasukan</span>
-              <span id="val-total" class="font-black text-2xl text-emerald-400">0</span>
+              <span class="text-sm font-semibold">Jumlah Pasukan</span>
+              <span id="val-total" class="font-black text-xl text-emerald-400">0</span>
             </div>
           </div>
-
-          <!-- Tindakan -->
-          <div class="mt-3">
-            <button id="btn-copy" class="w-full bg-[#25D366] hover:bg-[#128C7E] text-white font-bold py-3 px-4 rounded-lg shadow-md transition-colors flex justify-center items-center gap-2 focus:ring-4 focus:ring-green-300">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-whatsapp" viewBox="0 0 16 16">
-                <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232z"/>
-              </svg>
-              Eksport ke WhatsApp
-            </button>
-            <div id="msg-copy-container" class="mt-3 text-center h-5">
-              <p id="msg-copy-success" class="text-sm text-emerald-600 font-semibold opacity-0 transition-opacity duration-300 transform translate-y-1">
-                Berjaya disalin ke klipbod!
-              </p>
-            </div>
-          </div>
-
+          <button id="btn-copy" onclick="handleCopyToWhatsApp()" class="w-full bg-[#25D366] text-white font-bold py-2.5 rounded-lg shadow transition-colors flex justify-center items-center gap-2">Eksport WhatsApp</button>
         </div>
+
+        <!-- ======================= -->
+        <!-- VIEW 2: BORANG SKOR -->
+        <!-- ======================= -->
+        <div id="view-borang" class="hide-view">
+          <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-200">
+            <h2 class="text-lg font-bold mb-4 text-slate-800 border-b pb-2">Masuk Keputusan Jaringan</h2>
+            
+            <form id="form-skor" onsubmit="hantarSkor(event)" class="space-y-4">
+              <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">Permainan</label>
+                <select id="sel-permainan" required onchange="kemaskiniKategori()" class="w-full border-slate-300 rounded-md shadow-sm border p-2.5 focus:ring-blue-500 focus:border-blue-500 bg-slate-50 text-sm">
+                  <option value="" disabled selected>-- Pilih Permainan --</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">Kategori</label>
+                <select id="sel-kategori" required onchange="kemaskiniPasukan()" disabled class="w-full border-slate-300 rounded-md shadow-sm border p-2.5 focus:ring-blue-500 focus:border-blue-500 bg-slate-50 text-sm disabled:opacity-50">
+                  <option value="" disabled selected>-- Pilih Kategori --</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">Pasukan</label>
+                <select id="sel-pasukan" required disabled class="w-full border-slate-300 rounded-md shadow-sm border p-2.5 focus:ring-blue-500 focus:border-blue-500 bg-slate-50 text-sm disabled:opacity-50">
+                  <option value="" disabled selected>-- Pilih Pasukan --</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">Jumlah Jaringan (Pusingan Semasa)</label>
+                <input type="number" id="inp-jaringan" required min="0" max="99" class="w-full border-slate-300 rounded-md shadow-sm border p-2.5 focus:ring-blue-500 focus:border-blue-500 bg-slate-50 text-lg font-bold text-center">
+              </div>
+
+              <button type="submit" id="btn-submit-skor" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-md transition-colors mt-2">
+                Simpan Markah
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- ======================= -->
+        <!-- VIEW 3: RANKING -->
+        <!-- ======================= -->
+        <div id="view-ranking" class="hide-view">
+          <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 mb-4">
+            <h2 class="text-sm font-bold mb-3 text-slate-800">Pilih Kategori Papan Pendahulu</h2>
+            <div class="flex gap-2">
+              <select id="rank-permainan" class="flex-1 border-slate-300 rounded shadow-sm border p-2 text-xs font-medium focus:ring-blue-500">
+                <option value="PENALTY SHOOT-OUT">PENALTY SHOOT-OUT</option>
+                <option value="NETBALL SHOOT-OUT">NETBALL SHOOT-OUT</option>
+              </select>
+              <select id="rank-kategori" class="flex-1 border-slate-300 rounded shadow-sm border p-2 text-xs font-medium focus:ring-blue-500">
+                <option value="RENDAH">RENDAH</option>
+                <option value="MENENGAH">MENENGAH</option>
+              </select>
+            </div>
+            <button onclick="paparRanking()" class="w-full mt-3 bg-slate-800 text-white text-sm font-bold py-2 rounded">Jana Papan Pendahulu</button>
+          </div>
+
+          <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+            <table class="w-full text-left text-sm whitespace-nowrap">
+              <thead class="bg-slate-100 text-slate-700">
+                <tr>
+                  <th class="px-4 py-3 font-bold w-12 text-center">#</th>
+                  <th class="px-4 py-3 font-bold">Pasukan</th>
+                  <th class="px-4 py-3 font-bold text-right">Skor</th>
+                </tr>
+              </thead>
+              <tbody id="badan-jadual-ranking" class="divide-y divide-slate-100 bg-white">
+                <tr><td colspan="3" class="px-4 py-8 text-center text-slate-400 italic">Sila jana papan pendahulu</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
       </div>
     </div>
 
     <script>
+      // Sila gantikan URL ini dengan URL Web App GAS v2 anda selepas di-deploy (Publish -> Deploy as Web App -> New Version)
       const GAS_API_URL = 'https://script.google.com/macros/s/AKfycby4lxvvfATmbzsIAbUgTNoyTqElspEuxGuWZ6_WH-e3Vl63mYPnYkhtTR2RLGkgcfAu/exec';
-      let currentData = null;
+      
+      let viewSemasa = 'rumusan';
+      let dataSenaraiPasukan = null;
+      let dataRumusan = null;
 
-      async function loadSummaryData() {
-        document.getElementById('state-loading').classList.remove('hidden');
-        document.getElementById('state-error').classList.add('hidden');
-        document.getElementById('state-content').classList.add('hidden');
-        document.getElementById('state-content').classList.remove('flex');
+      // KAWALAN PAPARAN (UI State)
+      function switchTab(tabName) {
+        viewSemasa = tabName;
+        const tabs = ['rumusan', 'borang', 'ranking'];
+        
+        tabs.forEach(t => {
+          document.getElementById(`tab-${t}`).classList.remove('tab-active');
+          document.getElementById(`tab-${t}`).classList.add('tab-inactive');
+          document.getElementById(`view-${t}`).classList.add('hide-view');
+        });
 
+        document.getElementById(`tab-${tabName}`).classList.add('tab-active');
+        document.getElementById(`tab-${tabName}`).classList.remove('tab-inactive');
+        document.getElementById(`view-${tabName}`).classList.remove('hide-view');
+
+        // Panggil fungsi bergantung kepada tab (Lazy load)
+        if (tabName === 'rumusan' && !dataRumusan) loadRumusan();
+        if (tabName === 'borang' && !dataSenaraiPasukan) loadSenaraiPasukan();
+        sembunyiNotifikasi();
+      }
+
+      function refreshCurrentView() {
+        if(viewSemasa === 'rumusan') { dataRumusan = null; loadRumusan(); }
+        else if(viewSemasa === 'borang') { dataSenaraiPasukan = null; loadSenaraiPasukan(); }
+        else if(viewSemasa === 'ranking') paparRanking();
+      }
+
+      function paparLoader(teks) {
+        document.getElementById('loader-teks').textContent = teks || 'Memproses...';
+        document.getElementById('loader-utama').classList.remove('hide-view');
+      }
+
+      function tutupLoader() {
+        document.getElementById('loader-utama').classList.add('hide-view');
+      }
+
+      function tunjukNotifikasi(mesej, jenis = 'info') {
+        const notif = document.getElementById('notifikasi');
+        notif.textContent = mesej;
+        notif.classList.remove('hide-view', 'bg-red-100', 'text-red-700', 'border-red-300', 'bg-green-100', 'text-green-700', 'border-green-300');
+        if (jenis === 'error') notif.classList.add('bg-red-100', 'text-red-700', 'border-red-300');
+        else notif.classList.add('bg-green-100', 'text-green-700', 'border-green-300');
+        setTimeout(sembunyiNotifikasi, 5000);
+      }
+
+      function sembunyiNotifikasi() {
+        document.getElementById('notifikasi').classList.add('hide-view');
+      }
+
+      // ----------------------------------------------------
+      // FUNGSI 1: RUMUSAN (Sedia Ada)
+      // ----------------------------------------------------
+      async function loadRumusan() {
+        paparLoader('Mengambil pendaftaran...');
         try {
-          const response = await fetch(GAS_API_URL);
-          if (!response.ok) throw new Error(`Ralat HTTP: ${response.status}`);
+          const res = await fetch(`${GAS_API_URL}?action=summary`);
+          const d = await res.json();
+          if(d.status !== 'success') throw new Error(d.message);
           
-          const result = await response.json();
-          
-          if (result.status === 'success') {
-            onDataSuccess(result.data);
-          } else {
-            throw new Error(result.message || "Ralat tidak diketahui dari pelayan.");
-          }
-        } catch (error) {
-          onDataFailure(error);
+          dataRumusan = d.data;
+          document.getElementById('val-pen-ren-count').textContent = dataRumusan.penaltyRendah;
+          document.getElementById('val-pen-men-count').textContent = dataRumusan.penaltyMenengah;
+          document.getElementById('val-net-ren-count').textContent = dataRumusan.netballRendah;
+          document.getElementById('val-net-men-count').textContent = dataRumusan.netballMenengah;
+          document.getElementById('val-inst-total').textContent = dataRumusan.jumlahInstitusi;
+          document.getElementById('val-total').textContent = dataRumusan.total;
+
+          binaSenaraiHtml('list-pen-rendah', dataRumusan.senaraiPenRendah);
+          binaSenaraiHtml('list-pen-menengah', dataRumusan.senaraiPenMenengah);
+          binaSenaraiHtml('list-net-rendah', dataRumusan.senaraiNetRendah);
+          binaSenaraiHtml('list-net-menengah', dataRumusan.senaraiNetMenengah);
+        } catch (e) {
+          tunjukNotifikasi(e.message, 'error');
         }
+        tutupLoader();
       }
 
-      function renderList(elementId, arrayData) {
-        const listEl = document.getElementById(elementId);
-        listEl.innerHTML = '';
-        if(arrayData && arrayData.length > 0) {
-          arrayData.forEach(item => {
-            let li = document.createElement('li');
-            li.textContent = item;
-            listEl.appendChild(li);
-          });
+      function binaSenaraiHtml(id, dataArr) {
+        const el = document.getElementById(id);
+        if (dataArr && dataArr.length > 0) {
+          el.innerHTML = dataArr.map(s => `<li>${s}</li>`).join('');
         } else {
-          listEl.innerHTML = '<li class="text-slate-400 italic font-medium">Tiada pendaftaran setakat ini</li>';
+          el.innerHTML = '<li class="text-slate-400 italic">Tiada penyertaan</li>';
         }
       }
 
-      function onDataSuccess(data) {
-        currentData = data;
-        
-        document.getElementById('val-pen-ren-count').textContent = data.penaltyRendah;
-        document.getElementById('val-pen-men-count').textContent = data.penaltyMenengah;
-        document.getElementById('val-net-ren-count').textContent = data.netballRendah;
-        document.getElementById('val-net-men-count').textContent = data.netballMenengah;
-        
-        document.getElementById('val-inst-total').textContent = data.jumlahInstitusi;
-        document.getElementById('val-total').textContent = data.total;
-
-        renderList('list-pen-rendah', data.senaraiPenRendah);
-        renderList('list-pen-menengah', data.senaraiPenMenengah);
-        renderList('list-net-rendah', data.senaraiNetRendah);
-        renderList('list-net-menengah', data.senaraiNetMenengah);
-
-        document.getElementById('state-loading').classList.add('hidden');
-        document.getElementById('state-content').classList.remove('hidden');
-        document.getElementById('state-content').classList.add('flex');
-      }
-
-      function onDataFailure(error) {
-        console.error("Ralat Pengambilan Data:", error);
-        document.getElementById('state-loading').classList.add('hidden');
-        document.getElementById('state-error').classList.remove('hidden');
-        document.getElementById('error-message').textContent = error.message || "Terdapat ralat teknikal semasa menyambung ke pangkalan data.";
-      }
-
-      function formatListForWA(arr) {
-        return (arr && arr.length > 0) ? arr.map(s => `  - ${s}`).join('\n') : `  - Tiada data`;
-      }
-
-      function handleCopyToWhatsApp() {
-        if (!currentData) return;
-
-        const dateObj = new Date();
-        const dateStr = dateObj.toLocaleDateString('ms-MY', { day: 'numeric', month: 'short', year: 'numeric' });
-        const timeStr = dateObj.toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit', hour12: true });
-
-        const whatsappText = `*RUMUSAN PENYERTAAN PERTANDINGAN*
-Dikemaskini: ${dateStr} ${timeStr}
-
-⚽ *PENALTY SHOOT-OUT*
-*Sekolah Rendah (${currentData.penaltyRendah} Pasukan):*
-${formatListForWA(currentData.senaraiPenRendah)}
-
-*Sekolah Menengah (${currentData.penaltyMenengah} Pasukan):*
-${formatListForWA(currentData.senaraiPenMenengah)}
-
-🏐 *NETBALL SHOOT-OUT*
-*Sekolah Rendah (${currentData.netballRendah} Pasukan):*
-${formatListForWA(currentData.senaraiNetRendah)}
-
-*Sekolah Menengah (${currentData.netballMenengah} Pasukan):*
-${formatListForWA(currentData.senaraiNetMenengah)}
-
-*RUMUSAN KESELURUHAN*
-🏫 Institusi Terlibat: ${currentData.jumlahInstitusi} Sekolah
-✅ Jumlah Keseluruhan: ${currentData.total} Pasukan`;
-
-        navigator.clipboard.writeText(whatsappText)
-          .then(() => {
-            const successMsg = document.getElementById('msg-copy-success');
-            successMsg.classList.remove('opacity-0', 'translate-y-1');
-            successMsg.classList.add('opacity-100', 'translate-y-0');
-            
-            setTimeout(() => {
-              successMsg.classList.remove('opacity-100', 'translate-y-0');
-              successMsg.classList.add('opacity-0', 'translate-y-1');
-            }, 3000);
-          })
-          .catch(err => {
-            console.error("Ralat Papan Keratan:", err);
-            alert("Ralat semasa menyalin. Sila cuba manual.");
+      // ----------------------------------------------------
+      // FUNGSI 2: BORANG SKOR
+      // ----------------------------------------------------
+      async function loadSenaraiPasukan() {
+        paparLoader('Menyelaras senarai pasukan...');
+        try {
+          const res = await fetch(`${GAS_API_URL}?action=getTeams`);
+          const d = await res.json();
+          if(d.status !== 'success') throw new Error(d.message);
+          
+          dataSenaraiPasukan = d.data;
+          
+          // Bina dropdown Permainan
+          const selPermainan = document.getElementById('sel-permainan');
+          selPermainan.innerHTML = '<option value="" disabled selected>-- Pilih Permainan --</option>';
+          Object.keys(dataSenaraiPasukan).forEach(p => {
+            selPermainan.innerHTML += `<option value="${p}">${p}</option>`;
           });
+          
+          // Reset yang bawah
+          document.getElementById('sel-kategori').innerHTML = '<option value="" disabled selected>-- Pilih Kategori --</option>';
+          document.getElementById('sel-kategori').disabled = true;
+          document.getElementById('sel-pasukan').innerHTML = '<option value="" disabled selected>-- Pilih Pasukan --</option>';
+          document.getElementById('sel-pasukan').disabled = true;
+
+        } catch (e) {
+          tunjukNotifikasi('Gagal muat senarai pasukan: ' + e.message, 'error');
+        }
+        tutupLoader();
       }
 
-      document.addEventListener('DOMContentLoaded', loadSummaryData);
-      document.getElementById('btn-copy').addEventListener('click', handleCopyToWhatsApp);
+      function kemaskiniKategori() {
+        const p = document.getElementById('sel-permainan').value;
+        const selKat = document.getElementById('sel-kategori');
+        
+        if(p && dataSenaraiPasukan[p]) {
+          selKat.innerHTML = '<option value="" disabled selected>-- Pilih Kategori --</option>';
+          Object.keys(dataSenaraiPasukan[p]).forEach(k => {
+            selKat.innerHTML += `<option value="${k}">${k}</option>`;
+          });
+          selKat.disabled = false;
+        } else {
+          selKat.disabled = true;
+        }
+        document.getElementById('sel-pasukan').innerHTML = '<option value="" disabled selected>-- Pilih Pasukan --</option>';
+        document.getElementById('sel-pasukan').disabled = true;
+      }
+
+      function kemaskiniPasukan() {
+        const p = document.getElementById('sel-permainan').value;
+        const k = document.getElementById('sel-kategori').value;
+        const selPasukan = document.getElementById('sel-pasukan');
+
+        if(p && k && dataSenaraiPasukan[p][k]) {
+          selPasukan.innerHTML = '<option value="" disabled selected>-- Pilih Pasukan --</option>';
+          dataSenaraiPasukan[p][k].forEach(pas => {
+            // Kita simpan value digabungkan dengan separator '|' untuk hantar nama sekolah & pasukan serentak
+            selPasukan.innerHTML += `<option value="${pas.sekolah}|${pas.pasukan}">${pas.pasukan} (${pas.sekolah})</option>`;
+          });
+          selPasukan.disabled = false;
+        } else {
+          selPasukan.disabled = true;
+        }
+      }
+
+      async function hantarSkor(e) {
+        e.preventDefault();
+        
+        const prm = document.getElementById('sel-permainan').value;
+        const kat = document.getElementById('sel-kategori').value;
+        const pasVal = document.getElementById('sel-pasukan').value;
+        const jar = document.getElementById('inp-jaringan').value;
+
+        if(!prm || !kat || !pasVal || jar === "") {
+          alert("Sila lengkapkan maklumat."); return;
+        }
+
+        const parts = pasVal.split('|');
+        const sek = parts[0];
+        const pas = parts[1];
+
+        const payload = {
+          action: 'saveScore',
+          permainan: prm,
+          kategori: kat,
+          sekolah: sek,
+          pasukan: pas,
+          jaringan: parseInt(jar)
+        };
+
+        paparLoader('Menghantar skor ke pelayan...');
+        try {
+          // Trik bypass preflight CORS GAS POST
+          const res = await fetch(GAS_API_URL, {
+            method: 'POST',
+            body: JSON.stringify(payload),
+            headers: {
+              'Content-Type': 'text/plain;charset=utf-8',
+            }
+          });
+          const d = await res.json();
+          if(d.status !== 'success') throw new Error(d.message);
+          
+          tunjukNotifikasi('Jaringan direkod berjaya!', 'success');
+          document.getElementById('inp-jaringan').value = ""; // Reset form skor
+        } catch (e) {
+          tunjukNotifikasi('Ralat Simpan: ' + e.message, 'error');
+        }
+        tutupLoader();
+      }
+
+      // ----------------------------------------------------
+      // FUNGSI 3: RANKING
+      // ----------------------------------------------------
+      async function paparRanking() {
+        const prm = document.getElementById('rank-permainan').value;
+        const kat = document.getElementById('rank-kategori').value;
+        const bodyEl = document.getElementById('badan-jadual-ranking');
+
+        paparLoader('Mengira markah...');
+        try {
+          const res = await fetch(`${GAS_API_URL}?action=getRankings&permainan=${encodeURIComponent(prm)}&kategori=${encodeURIComponent(kat)}`);
+          const d = await res.json();
+          if(d.status !== 'success') throw new Error(d.message);
+          
+          const rankData = d.data;
+          bodyEl.innerHTML = '';
+
+          if(rankData && rankData.length > 0) {
+            rankData.forEach((r, index) => {
+              // Gaya berbeza untuk Top 3
+              let rankStyle = "text-slate-700";
+              let badge = `${index + 1}`;
+              if(index === 0) { badge = '🥇'; rankStyle = "bg-yellow-50 text-yellow-800 font-bold"; }
+              else if(index === 1) { badge = '🥈'; rankStyle = "bg-slate-100 text-slate-800 font-bold"; }
+              else if(index === 2) { badge = '🥉'; rankStyle = "bg-orange-50 text-orange-800 font-bold"; }
+
+              bodyEl.innerHTML += `
+                <tr class="${rankStyle} transition-colors hover:bg-slate-50">
+                  <td class="px-4 py-2 font-bold text-center">${badge}</td>
+                  <td class="px-4 py-2">
+                    <div class="font-bold text-sm">${r.pasukan}</div>
+                    <div class="text-xs opacity-70">${r.sekolah}</div>
+                  </td>
+                  <td class="px-4 py-2 text-right font-black text-lg">${r.totalJaringan}</td>
+                </tr>
+              `;
+            });
+          } else {
+            bodyEl.innerHTML = '<tr><td colspan="3" class="px-4 py-6 text-center text-slate-400 font-medium">Belum ada skor direkodkan untuk kategori ini.</td></tr>';
+          }
+        } catch (e) {
+          tunjukNotifikasi('Ralat Ranking: ' + e.message, 'error');
+        }
+        tutupLoader();
+      }
+
+      // Fungsi Eksport WhatsApp
+      function handleCopyToWhatsApp() {
+        if (!dataRumusan) {
+          alert('Sila muat turun data terlebih dahulu.'); return;
+        }
+        const wStr = (arr) => (arr && arr.length > 0) ? arr.map(s => `  - ${s}`).join('\n') : `  - Tiada data`;
+        const dt = new Date();
+        const msg = `*RUMUSAN PENYERTAAN PERTANDINGAN*\nDikemaskini: ${dt.toLocaleDateString('ms-MY')} ${dt.toLocaleTimeString('ms-MY')}\n\n⚽ *PENALTY SHOOT-OUT*\n*Sekolah Rendah (${dataRumusan.penaltyRendah}):*\n${wStr(dataRumusan.senaraiPenRendah)}\n\n*Sekolah Menengah (${dataRumusan.penaltyMenengah}):*\n${wStr(dataRumusan.senaraiPenMenengah)}\n\n🏐 *NETBALL SHOOT-OUT*\n*Sekolah Rendah (${dataRumusan.netballRendah}):*\n${wStr(dataRumusan.senaraiNetRendah)}\n\n*Sekolah Menengah (${dataRumusan.netballMenengah}):*\n${wStr(dataRumusan.senaraiNetMenengah)}\n\n*RUMUSAN*\n🏫 Institusi: ${dataRumusan.jumlahInstitusi}\n✅ Jumlah Pasukan: ${dataRumusan.total}`;
+        
+        navigator.clipboard.writeText(msg).then(() => tunjukNotifikasi('Salinan ke papan keratan berjaya!', 'success')).catch(() => alert("Gagal menyalin."));
+      }
+
+      // Initialize
+      document.addEventListener('DOMContentLoaded', () => {
+        loadRumusan();
+      });
     </script>
   </body>
 </html>
