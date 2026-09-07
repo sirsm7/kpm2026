@@ -27,7 +27,7 @@
         <div class="p-4 flex justify-between items-center border-b border-slate-700">
           <div>
             <h1 class="text-xl font-bold">Sistem Pertandingan</h1>
-            <p class="text-xs text-slate-300 mt-1" id="status-koneksi">Tersambung ke Google Sheets</p>
+            <p class="text-xs text-slate-300 mt-1" id="status-koneksi">Tersambung ke Google Sheets (Asli)</p>
           </div>
           <button onclick="refreshCurrentView()" class="p-2 rounded-full hover:bg-slate-700 transition-colors" title="Muat Semula">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -56,7 +56,7 @@
         <div id="notifikasi" class="hide-view mb-4 p-3 rounded-md text-sm border font-medium"></div>
 
         <!-- ======================= -->
-        <!-- VIEW 1: RUMUSAN (Sedia ada) -->
+        <!-- VIEW 1: RUMUSAN -->
         <!-- ======================= -->
         <div id="view-rumusan" class="space-y-4">
           <!-- Kad Penalty -->
@@ -199,9 +199,6 @@
     </div>
 
     <script>
-      // Sila gantikan URL ini dengan URL Web App GAS v2 anda selepas di-deploy (Publish -> Deploy as Web App -> New Version)
-      const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbwjBPRDzraPBWUABRfmvlbZJOfs2aX4Y2H9GNc1rs0LK7Bi2_jnLhwSwJtzq52SWbgu/exec';
-      
       let viewSemasa = 'rumusan';
       let dataSenaraiPasukan = null;
       let dataRumusan = null;
@@ -221,7 +218,6 @@
         document.getElementById(`tab-${tabName}`).classList.remove('tab-inactive');
         document.getElementById(`view-${tabName}`).classList.remove('hide-view');
 
-        // Panggil fungsi bergantung kepada tab (Lazy load)
         if (tabName === 'rumusan' && !dataRumusan) loadRumusan();
         if (tabName === 'borang' && !dataSenaraiPasukan) loadSenaraiPasukan();
         sembunyiNotifikasi();
@@ -255,34 +251,6 @@
         document.getElementById('notifikasi').classList.add('hide-view');
       }
 
-      // ----------------------------------------------------
-      // FUNGSI 1: RUMUSAN (Sedia Ada)
-      // ----------------------------------------------------
-      async function loadRumusan() {
-        paparLoader('Mengambil pendaftaran...');
-        try {
-          const res = await fetch(`${GAS_API_URL}?action=summary`);
-          const d = await res.json();
-          if(d.status !== 'success') throw new Error(d.message);
-          
-          dataRumusan = d.data;
-          document.getElementById('val-pen-ren-count').textContent = dataRumusan.penaltyRendah;
-          document.getElementById('val-pen-men-count').textContent = dataRumusan.penaltyMenengah;
-          document.getElementById('val-net-ren-count').textContent = dataRumusan.netballRendah;
-          document.getElementById('val-net-men-count').textContent = dataRumusan.netballMenengah;
-          document.getElementById('val-inst-total').textContent = dataRumusan.jumlahInstitusi;
-          document.getElementById('val-total').textContent = dataRumusan.total;
-
-          binaSenaraiHtml('list-pen-rendah', dataRumusan.senaraiPenRendah);
-          binaSenaraiHtml('list-pen-menengah', dataRumusan.senaraiPenMenengah);
-          binaSenaraiHtml('list-net-rendah', dataRumusan.senaraiNetRendah);
-          binaSenaraiHtml('list-net-menengah', dataRumusan.senaraiNetMenengah);
-        } catch (e) {
-          tunjukNotifikasi(e.message, 'error');
-        }
-        tutupLoader();
-      }
-
       function binaSenaraiHtml(id, dataArr) {
         const el = document.getElementById(id);
         if (dataArr && dataArr.length > 0) {
@@ -293,34 +261,67 @@
       }
 
       // ----------------------------------------------------
-      // FUNGSI 2: BORANG SKOR
+      // FUNGSI 1: RUMUSAN (google.script.run)
       // ----------------------------------------------------
-      async function loadSenaraiPasukan() {
-        paparLoader('Menyelaras senarai pasukan...');
-        try {
-          const res = await fetch(`${GAS_API_URL}?action=getTeams`);
-          const d = await res.json();
-          if(d.status !== 'success') throw new Error(d.message);
-          
-          dataSenaraiPasukan = d.data;
-          
-          // Bina dropdown Permainan
-          const selPermainan = document.getElementById('sel-permainan');
-          selPermainan.innerHTML = '<option value="" disabled selected>-- Pilih Permainan --</option>';
-          Object.keys(dataSenaraiPasukan).forEach(p => {
-            selPermainan.innerHTML += `<option value="${p}">${p}</option>`;
-          });
-          
-          // Reset yang bawah
-          document.getElementById('sel-kategori').innerHTML = '<option value="" disabled selected>-- Pilih Kategori --</option>';
-          document.getElementById('sel-kategori').disabled = true;
-          document.getElementById('sel-pasukan').innerHTML = '<option value="" disabled selected>-- Pilih Pasukan --</option>';
-          document.getElementById('sel-pasukan').disabled = true;
+      function loadRumusan() {
+        paparLoader('Mengambil pendaftaran...');
+        google.script.run
+          .withSuccessHandler(function(res) {
+            tutupLoader();
+            if(res.status !== 'success') {
+              tunjukNotifikasi(res.message, 'error');
+              return;
+            }
+            dataRumusan = res.data;
+            document.getElementById('val-pen-ren-count').textContent = dataRumusan.penaltyRendah;
+            document.getElementById('val-pen-men-count').textContent = dataRumusan.penaltyMenengah;
+            document.getElementById('val-net-ren-count').textContent = dataRumusan.netballRendah;
+            document.getElementById('val-net-men-count').textContent = dataRumusan.netballMenengah;
+            document.getElementById('val-inst-total').textContent = dataRumusan.jumlahInstitusi;
+            document.getElementById('val-total').textContent = dataRumusan.total;
 
-        } catch (e) {
-          tunjukNotifikasi('Gagal muat senarai pasukan: ' + e.message, 'error');
-        }
-        tutupLoader();
+            binaSenaraiHtml('list-pen-rendah', dataRumusan.senaraiPenRendah);
+            binaSenaraiHtml('list-pen-menengah', dataRumusan.senaraiPenMenengah);
+            binaSenaraiHtml('list-net-rendah', dataRumusan.senaraiNetRendah);
+            binaSenaraiHtml('list-net-menengah', dataRumusan.senaraiNetMenengah);
+          })
+          .withFailureHandler(function(err) {
+            tutupLoader();
+            tunjukNotifikasi('Ralat: ' + err.message, 'error');
+          })
+          .getSummaryDataRPC();
+      }
+
+      // ----------------------------------------------------
+      // FUNGSI 2: BORANG SKOR (google.script.run)
+      // ----------------------------------------------------
+      function loadSenaraiPasukan() {
+        paparLoader('Menyelaras senarai pasukan...');
+        google.script.run
+          .withSuccessHandler(function(res) {
+            tutupLoader();
+            if(res.status !== 'success') {
+              tunjukNotifikasi(res.message, 'error');
+              return;
+            }
+            dataSenaraiPasukan = res.data;
+            
+            const selPermainan = document.getElementById('sel-permainan');
+            selPermainan.innerHTML = '<option value="" disabled selected>-- Pilih Permainan --</option>';
+            Object.keys(dataSenaraiPasukan).forEach(p => {
+              selPermainan.innerHTML += `<option value="${p}">${p}</option>`;
+            });
+            
+            document.getElementById('sel-kategori').innerHTML = '<option value="" disabled selected>-- Pilih Kategori --</option>';
+            document.getElementById('sel-kategori').disabled = true;
+            document.getElementById('sel-pasukan').innerHTML = '<option value="" disabled selected>-- Pilih Pasukan --</option>';
+            document.getElementById('sel-pasukan').disabled = true;
+          })
+          .withFailureHandler(function(err) {
+            tutupLoader();
+            tunjukNotifikasi('Gagal muat senarai pasukan: ' + err.message, 'error');
+          })
+          .getTeamsListRPC();
       }
 
       function kemaskiniKategori() {
@@ -348,7 +349,6 @@
         if(p && k && dataSenaraiPasukan[p][k]) {
           selPasukan.innerHTML = '<option value="" disabled selected>-- Pilih Pasukan --</option>';
           dataSenaraiPasukan[p][k].forEach(pas => {
-            // Kita simpan value digabungkan dengan separator '|' untuk hantar nama sekolah & pasukan serentak
             selPasukan.innerHTML += `<option value="${pas.sekolah}|${pas.pasukan}">${pas.pasukan} (${pas.sekolah})</option>`;
           });
           selPasukan.disabled = false;
@@ -357,7 +357,7 @@
         }
       }
 
-      async function hantarSkor(e) {
+      function hantarSkor(e) {
         e.preventDefault();
         
         const prm = document.getElementById('sel-permainan').value;
@@ -374,7 +374,6 @@
         const pas = parts[1];
 
         const payload = {
-          action: 'saveScore',
           permainan: prm,
           kategori: kat,
           sekolah: sek,
@@ -383,73 +382,74 @@
         };
 
         paparLoader('Menghantar skor ke pelayan...');
-        try {
-          // Trik bypass preflight CORS GAS POST
-          const res = await fetch(GAS_API_URL, {
-            method: 'POST',
-            body: JSON.stringify(payload),
-            headers: {
-              'Content-Type': 'text/plain;charset=utf-8',
+        google.script.run
+          .withSuccessHandler(function(res) {
+            tutupLoader();
+            if(res.status !== 'success') {
+              tunjukNotifikasi(res.message, 'error');
+              return;
             }
-          });
-          const d = await res.json();
-          if(d.status !== 'success') throw new Error(d.message);
-          
-          tunjukNotifikasi('Jaringan direkod berjaya!', 'success');
-          document.getElementById('inp-jaringan').value = ""; // Reset form skor
-        } catch (e) {
-          tunjukNotifikasi('Ralat Simpan: ' + e.message, 'error');
-        }
-        tutupLoader();
+            tunjukNotifikasi('Jaringan direkod berjaya!', 'success');
+            document.getElementById('inp-jaringan').value = ""; 
+          })
+          .withFailureHandler(function(err) {
+            tutupLoader();
+            tunjukNotifikasi('Ralat Simpan: ' + err.message, 'error');
+          })
+          .saveScoreRPC(payload);
       }
 
       // ----------------------------------------------------
-      // FUNGSI 3: RANKING
+      // FUNGSI 3: RANKING (google.script.run)
       // ----------------------------------------------------
-      async function paparRanking() {
+      function paparRanking() {
         const prm = document.getElementById('rank-permainan').value;
         const kat = document.getElementById('rank-kategori').value;
         const bodyEl = document.getElementById('badan-jadual-ranking');
 
         paparLoader('Mengira markah...');
-        try {
-          const res = await fetch(`${GAS_API_URL}?action=getRankings&permainan=${encodeURIComponent(prm)}&kategori=${encodeURIComponent(kat)}`);
-          const d = await res.json();
-          if(d.status !== 'success') throw new Error(d.message);
-          
-          const rankData = d.data;
-          bodyEl.innerHTML = '';
+        google.script.run
+          .withSuccessHandler(function(res) {
+            tutupLoader();
+            if(res.status !== 'success') {
+              tunjukNotifikasi(res.message, 'error');
+              return;
+            }
+            
+            const rankData = res.data;
+            bodyEl.innerHTML = '';
 
-          if(rankData && rankData.length > 0) {
-            rankData.forEach((r, index) => {
-              // Gaya berbeza untuk Top 3
-              let rankStyle = "text-slate-700";
-              let badge = `${index + 1}`;
-              if(index === 0) { badge = '🥇'; rankStyle = "bg-yellow-50 text-yellow-800 font-bold"; }
-              else if(index === 1) { badge = '🥈'; rankStyle = "bg-slate-100 text-slate-800 font-bold"; }
-              else if(index === 2) { badge = '🥉'; rankStyle = "bg-orange-50 text-orange-800 font-bold"; }
+            if(rankData && rankData.length > 0) {
+              rankData.forEach((r, index) => {
+                let rankStyle = "text-slate-700";
+                let badge = `${index + 1}`;
+                if(index === 0) { badge = '🥇'; rankStyle = "bg-yellow-50 text-yellow-800 font-bold"; }
+                else if(index === 1) { badge = '🥈'; rankStyle = "bg-slate-100 text-slate-800 font-bold"; }
+                else if(index === 2) { badge = '🥉'; rankStyle = "bg-orange-50 text-orange-800 font-bold"; }
 
-              bodyEl.innerHTML += `
-                <tr class="${rankStyle} transition-colors hover:bg-slate-50">
-                  <td class="px-4 py-2 font-bold text-center">${badge}</td>
-                  <td class="px-4 py-2">
-                    <div class="font-bold text-sm">${r.pasukan}</div>
-                    <div class="text-xs opacity-70">${r.sekolah}</div>
-                  </td>
-                  <td class="px-4 py-2 text-right font-black text-lg">${r.totalJaringan}</td>
-                </tr>
-              `;
-            });
-          } else {
-            bodyEl.innerHTML = '<tr><td colspan="3" class="px-4 py-6 text-center text-slate-400 font-medium">Belum ada skor direkodkan untuk kategori ini.</td></tr>';
-          }
-        } catch (e) {
-          tunjukNotifikasi('Ralat Ranking: ' + e.message, 'error');
-        }
-        tutupLoader();
+                bodyEl.innerHTML += `
+                  <tr class="${rankStyle} transition-colors hover:bg-slate-50">
+                    <td class="px-4 py-2 font-bold text-center">${badge}</td>
+                    <td class="px-4 py-2">
+                      <div class="font-bold text-sm">${r.pasukan}</div>
+                      <div class="text-xs opacity-70">${r.sekolah}</div>
+                    </td>
+                    <td class="px-4 py-2 text-right font-black text-lg">${r.totalJaringan}</td>
+                  </tr>
+                `;
+              });
+            } else {
+              bodyEl.innerHTML = '<tr><td colspan="3" class="px-4 py-6 text-center text-slate-400 font-medium">Belum ada skor direkodkan untuk kategori ini.</td></tr>';
+            }
+          })
+          .withFailureHandler(function(err) {
+            tutupLoader();
+            tunjukNotifikasi('Ralat Ranking: ' + err.message, 'error');
+          })
+          .getRankingsRPC(prm, kat);
       }
 
-      // Fungsi Eksport WhatsApp
+      // Eksport WhatsApp
       function handleCopyToWhatsApp() {
         if (!dataRumusan) {
           alert('Sila muat turun data terlebih dahulu.'); return;
@@ -461,9 +461,15 @@
         navigator.clipboard.writeText(msg).then(() => tunjukNotifikasi('Salinan ke papan keratan berjaya!', 'success')).catch(() => alert("Gagal menyalin."));
       }
 
-      // Initialize
+      // Initialize (Pastikan dijalankan dalam persekitaran GAS)
       document.addEventListener('DOMContentLoaded', () => {
-        loadRumusan();
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          loadRumusan();
+        } else {
+          paparLoader('');
+          tutupLoader();
+          tunjukNotifikasi("Amaran: Sistem tidak dikesan berjalan di dalam persekitaran Google Apps Script.", "error");
+        }
       });
     </script>
   </body>
