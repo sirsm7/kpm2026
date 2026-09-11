@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <!-- STREAMING_CHUNK:Konfigurasi awal HTML dan meta tags -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>Peta Lokasi Karnival - KPM 2026</title>
+    
+    <!-- Pemuatan Tailwind CSS melalui CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Pemuatan SweetAlert2 untuk paparan pop-up interaktif -->
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
+
+    <style>
+        /* STREAMING_CHUNK:Penggayaan tambahan tersuai */
+        /* Animasi kerdipan (pulse) tersuai untuk menarik perhatian kepada penanda (marker) */
+        @keyframes markerPulse {
+            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
+        
+        .marker-btn {
+            animation: markerPulse 2s infinite;
+        }
+
+        /* Memastikan peta boleh diskrol (panning) jika di-zoom di telefon pintar */
+        .map-wrapper {
+            touch-action: pan-x pan-y;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen flex flex-col font-sans text-slate-800">
+
+    <!-- STREAMING_CHUNK:Pengepala dan Navigasi Utama -->
+    <header class="bg-white/90 backdrop-blur-md shadow-sm sticky top-0 w-full z-50">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between relative">
+            
+            <a href="index.html" class="flex items-center text-blue-600 hover:text-blue-800 transition-colors font-medium z-10 bg-blue-50 py-1.5 px-3 rounded-full">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+                </svg>
+                <span>Kembali</span>
+            </a>
+            
+            <h1 class="text-lg font-bold text-slate-800 absolute left-1/2 transform -translate-x-1/2 whitespace-nowrap hidden sm:block">
+                Peta Lokasi Karnival
+            </h1>
+            
+            <!-- Tempat letak kosong di kanan untuk mengimbangi ruang tajuk di tengah -->
+            <div class="w-24"></div>
+        </div>
+    </header>
+
+    <!-- STREAMING_CHUNK:Kawasan Peta Interaktif -->
+    <main class="flex-grow flex items-start justify-center p-2 sm:p-6 lg:p-8 map-wrapper overflow-auto">
+        
+        <div class="bg-white p-2 rounded-xl shadow-lg border border-slate-200 w-full max-w-5xl">
+            
+            <div class="mb-4 text-center">
+                <h2 class="text-xl font-bold text-slate-800 sm:hidden">Peta Lokasi Karnival</h2>
+                <p class="text-sm text-slate-500 mt-1">Sila ketik pada nombor lokasi di peta untuk melihat maklumat acara.</p>
+            </div>
+
+            <!-- Kontena Peta dengan kedudukan relatif (relative) -->
+            <!-- Semua penanda di dalamnya menggunakan kedudukan mutlak (absolute) berasaskan peratusan imej -->
+            <div class="relative w-full h-auto overflow-hidden rounded-lg bg-slate-100 shadow-inner">
+                
+                <!-- Imej Peta Asas -->
+                <img src="peta.jpg" alt="Pelan Induk Lokasi Karnival" class="w-full h-auto block select-none pointer-events-none" id="img-map">
+                
+                <!-- Penanda 1: Dewan Alamanda -->
+                <button onclick="paparMaklumat(1)" class="absolute w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-full bg-blue-600 text-white text-xs sm:text-sm font-bold flex items-center justify-center transform -translate-x-1/2 -translate-y-1/2 cursor-pointer shadow-md hover:bg-blue-700 transition-transform hover:scale-110 z-10 marker-btn" style="left: 28%; top: 40%;" title="Dewan Alamanda">
+                    1
+                </button>
+
+                <!-- Penanda 2: Padang Sekolah -->
+                <button onclick="paparMaklumat(2)" class="absolute w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-full bg-blue-600 text-white text-xs sm:text-sm font-bold flex items-center justify-center transform -translate-x-1/2 -translate-y-1/2 cursor-pointer shadow-md hover:bg-blue-700 transition-transform hover:scale-110 z-10 marker-btn" style="left: 75%; top: 60%;" title="Padang Sekolah">
+                    2
+                </button>
+
+                <!-- Penanda 3: Dewan Datuk Dr Haji Ihsan -->
+                <button onclick="paparMaklumat(3)" class="absolute w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-full bg-blue-600 text-white text-xs sm:text-sm font-bold flex items-center justify-center transform -translate-x-1/2 -translate-y-1/2 cursor-pointer shadow-md hover:bg-blue-700 transition-transform hover:scale-110 z-10 marker-btn" style="left: 15%; top: 55%;" title="Dewan Datuk Dr Haji Ihsan">
+                    3
+                </button>
+
+                <!-- Penanda 4: Dewan Lavender -->
+                <button onclick="paparMaklumat(4)" class="absolute w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-full bg-blue-600 text-white text-xs sm:text-sm font-bold flex items-center justify-center transform -translate-x-1/2 -translate-y-1/2 cursor-pointer shadow-md hover:bg-blue-700 transition-transform hover:scale-110 z-10 marker-btn" style="left: 33%; top: 17%;" title="Dewan Lavender">
+                    4
+                </button>
+
+                <!-- Penanda 5: Kelas 5 Ekonomi & 5 Prinsip Akaun -->
+                <button onclick="paparMaklumat(5)" class="absolute w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-full bg-blue-600 text-white text-xs sm:text-sm font-bold flex items-center justify-center transform -translate-x-1/2 -translate-y-1/2 cursor-pointer shadow-md hover:bg-blue-700 transition-transform hover:scale-110 z-10 marker-btn" style="left: 39%; top: 13%;" title="Kelas 5 Ekonomi & 5 Prinsip Akaun">
+                    5
+                </button>
+
+                <!-- Penanda 6: Padang Mini -->
+                <button onclick="paparMaklumat(6)" class="absolute w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-full bg-blue-600 text-white text-xs sm:text-sm font-bold flex items-center justify-center transform -translate-x-1/2 -translate-y-1/2 cursor-pointer shadow-md hover:bg-blue-700 transition-transform hover:scale-110 z-10 marker-btn" style="left: 30%; top: 54%;" title="Padang Mini">
+                    6
+                </button>
+
+                <!-- Penanda 7: Kelas Tingkatan 1 -->
+                <button onclick="paparMaklumat(7)" class="absolute w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-full bg-blue-600 text-white text-xs sm:text-sm font-bold flex items-center justify-center transform -translate-x-1/2 -translate-y-1/2 cursor-pointer shadow-md hover:bg-blue-700 transition-transform hover:scale-110 z-10 marker-btn" style="left: 23%; top: 64%;" title="Kelas Tingkatan 1">
+                    7
+                </button>
+
+                <!-- Penanda 8: Perpustakaan & Google Classroom -->
+                <button onclick="paparMaklumat(8)" class="absolute w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-full bg-blue-600 text-white text-xs sm:text-sm font-bold flex items-center justify-center transform -translate-x-1/2 -translate-y-1/2 cursor-pointer shadow-md hover:bg-blue-700 transition-transform hover:scale-110 z-10 marker-btn" style="left: 46%; top: 20%;" title="Perpustakaan & Google Classroom">
+                    8
+                </button>
+
+                <!-- Penanda 9: Makmal Bestari 3 dan 4 -->
+                <button onclick="paparMaklumat(9)" class="absolute w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-full bg-blue-600 text-white text-xs sm:text-sm font-bold flex items-center justify-center transform -translate-x-1/2 -translate-y-1/2 cursor-pointer shadow-md hover:bg-blue-700 transition-transform hover:scale-110 z-10 marker-btn" style="left: 37%; top: 7%;" title="Makmal Bestari 3 dan 4">
+                    9
+                </button>
+            </div>
+            
+            <!-- Ruang Petunjuk (Legend) Ringkas di Bawah -->
+            <div class="mt-6 border-t border-slate-100 pt-4">
+                <h3 class="text-sm font-semibold text-slate-700 mb-2">Petunjuk Lokasi (Semak senarai jika peta tidak jelas):</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-xs text-slate-600">
+                    <div class="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded" onclick="paparMaklumat(1)"><span class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[10px]">1</span> Dewan Alamanda</div>
+                    <div class="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded" onclick="paparMaklumat(2)"><span class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[10px]">2</span> Padang Sekolah</div>
+                    <div class="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded" onclick="paparMaklumat(3)"><span class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[10px]">3</span> Dewan Datuk Dr Haji Ihsan</div>
+                    <div class="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded" onclick="paparMaklumat(4)"><span class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[10px]">4</span> Dewan Lavender</div>
+                    <div class="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded" onclick="paparMaklumat(5)"><span class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[10px]">5</span> Kelas 5 Ekonomi / Prinsip Akaun</div>
+                    <div class="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded" onclick="paparMaklumat(6)"><span class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[10px]">6</span> Padang Mini</div>
+                    <div class="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded" onclick="paparMaklumat(7)"><span class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[10px]">7</span> Kelas Tingkatan 1</div>
+                    <div class="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded" onclick="paparMaklumat(8)"><span class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[10px]">8</span> Perpustakaan & Google Classroom</div>
+                    <div class="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded" onclick="paparMaklumat(9)"><span class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[10px]">9</span> Makmal Bestari 3 dan 4</div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- STREAMING_CHUNK:Logik Aplikasi JavaScript -->
+    <script>
+        /**
+         * Pangkalan data statik (Objek JavaScript) 
+         * Menyimpan maklumat lokasi dan senarai acara berdasarkan spesifikasi yang ditetapkan.
+         */
+        const pangkalanDataLokasi = {
+            1: {
+                nama: "Dewan Alamanda",
+                ikon: "🏛️",
+                acara: [
+                    "Pertandingan Busana Tradisional",
+                    "Pertandingan Nyanyian Lagu Patriotik",
+                    "Pameran PPD, Agensi, Rakan Strategik & Sekolah",
+                    "Majlis Perasmian Penutup"
+                ]
+            },
+            2: {
+                nama: "Padang Sekolah",
+                ikon: "🏟️",
+                acara: [
+                    "Senamrobik MADANI"
+                ]
+            },
+            3: {
+                nama: "Dewan Datuk Dr Haji Ihsan",
+                ikon: "🏢",
+                acara: [
+                    "Slot NADI Negara",
+                    "Slot TEKAD Pendidikan Malaysia"
+                ]
+            },
+            4: {
+                nama: "Dewan Lavender",
+                ikon: "🏫",
+                acara: [
+                    "Pertandingan Mewarna Sekolah Rendah",
+                    "Pertandingan Doodle Art Sekolah Menengah"
+                ]
+            },
+            5: {
+                nama: "Kelas 5 Ekonomi & 5 Prinsip Akaun",
+                ikon: "📚",
+                acara: [
+                    "Pertandingan Cup Stacking Rendah & Menengah"
+                ]
+            },
+            6: {
+                nama: "Padang Mini",
+                ikon: "⚽",
+                acara: [
+                    "Penalty & Netball Shoot-Out"
+                ]
+            },
+            7: {
+                nama: "Kelas Tingkatan 1",
+                ikon: "🏫",
+                acara: [
+                    "Pertandingan Poster Kajian Tindakan & Inovasi"
+                ]
+            },
+            8: {
+                nama: "Perpustakaan & Google Classroom",
+                ikon: "📖",
+                acara: [
+                    "Pembentangan Kajian Tindakan & Inovasi"
+                ]
+            },
+            9: {
+                nama: "Makmal Bestari 3 dan 4",
+                ikon: "💻",
+                acara: [
+                    "Pembentangan Kajian Tindakan & Inovasi (Makmal Bestari 3, tingkat bawah)",
+                    "Bengkel Advance AI (Makmal Bestari 4, tingkat atas)"
+                ]
+            }
+        };
+
+        /**
+         * Fungsi untuk memaparkan tetingkap SweetAlert2
+         * @param {number} id - ID lokasi (1 hingga 9)
+         */
+        function paparMaklumat(id) {
+            const lokasi = pangkalanDataLokasi[id];
+            
+            // Jika ID lokasi tiada dalam pangkalan data
+            if (!lokasi) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Ralat',
+                    text: 'Maklumat lokasi tidak dijumpai.'
+                });
+                return;
+            }
+
+            // Bina kod HTML untuk menyenaraikan acara
+            let senaraiHtml = `<div class="text-left mt-3 bg-slate-50 p-4 rounded-lg border border-slate-100">`;
+            senaraiHtml += `<h4 class="font-semibold text-slate-700 text-sm mb-3 border-b pb-2">Acara / Program di sini:</h4>`;
+            senaraiHtml += `<ul class="space-y-2">`;
+            
+            lokasi.acara.forEach(item => {
+                senaraiHtml += `
+                    <li class="flex items-start text-sm text-slate-800">
+                        <svg class="w-4 h-4 text-green-500 mt-0.5 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        <span>${item}</span>
+                    </li>
+                `;
+            });
+            
+            senaraiHtml += `</ul></div>`;
+
+            // Cetuskan (trigger) SweetAlert2
+            Swal.fire({
+                title: `${lokasi.ikon} ${lokasi.nama}`,
+                html: senaraiHtml,
+                confirmButtonText: 'Tutup Maklumat',
+                confirmButtonColor: '#3b82f6', // Tailwinds blue-600
+                showClass: {
+                    popup: 'animate__animated animate__fadeInUp animate__faster' // Animasi lembut
+                },
+                hideClass: {
+                    popup: 'animate__animated animate__fadeOutDown animate__faster'
+                },
+                customClass: {
+                    title: 'text-xl text-slate-800 font-bold',
+                    popup: 'rounded-2xl shadow-2xl border border-slate-200'
+                }
+            });
+        }
+    </script>
+</body>
+</html>
